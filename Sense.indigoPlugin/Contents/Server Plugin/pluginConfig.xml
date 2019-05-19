@@ -1,0 +1,26 @@
+<?xml version="1.0"?>
+<PluginConfig>
+	<Field id="showDebugInfo" type="checkbox">
+		<Label>Enable debugging:</Label>
+	</Field>
+
+	<Field id="username" type="textfield">
+		<Label>Username:</Label>
+	</Field>
+	<Field id="password" type="textfield" secure="true">
+		<Label>Password:</Label>
+	</Field>
+	
+	<Field id="rateLimit" type="textfield" defaultValue="30">
+		<Label>Max rate:</Label>
+	</Field>
+
+	<Field id="solarEnabled" type="checkbox">
+		<Label>Solar enabled:</Label>
+	</Field>
+
+	<Field id="folderID" type="textfield">
+		<Label>Folder for Sense device creation:</Label>
+	</Field>
+
+</PluginConfig>

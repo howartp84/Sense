@@ -1,0 +1,31 @@
+<?xml version="1.0"?>
+
+<Devices>
+	<!-- This custom device illustrates how a plugin can update custom device
+	states which can be used in Device State Changed triggers, conditionals,
+	and inspected on Control Pages. The python runConcurrentThread() method
+	will update the states every second.
+	-->
+	<!--<Device type="custom" id="sensecore">
+		<Name>Sense Core</Name>
+
+	</Device>-->
+
+	<Device type="custom" id="sensedevice">
+		<Name>Sense Device</Name>
+		<States>
+			<State id="id">
+				<ValueType>String</ValueType>
+				<TriggerLabel>id</TriggerLabel>
+				<ControlPageLabel>id</ControlPageLabel>
+			</State>
+			<State id="power">
+				<ValueType>String</ValueType>
+				<TriggerLabel>power</TriggerLabel>
+				<ControlPageLabel>power</ControlPageLabel>
+			</State>
+		</States>
+		<UiDisplayStateId>power</UiDisplayStateId>
+	</Device>
+
+</Devices>
