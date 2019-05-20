@@ -98,7 +98,7 @@ class Plugin(indigo.PluginBase):
 			self.devIDs.append(sID)
 			self.sidFromDev[int(devID)] = sID
 			self.devFromSid[sID] = devID
-			#self.debugLog("Added device {} ({})".format(sID,dName))
+			self.debugLog("Added device {} ({})".format(sID,dName))
 			
 	def deviceStopComm(self, dev):
 		#self.debugLog("deviceStopComm called")
