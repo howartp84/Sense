@@ -20,7 +20,7 @@
 				<ControlPageLabel>id</ControlPageLabel>
 			</State>
 			<State id="power">
-				<ValueType>String</ValueType>
+				<ValueType>Number</ValueType>
 				<TriggerLabel>power</TriggerLabel>
 				<ControlPageLabel>power</ControlPageLabel>
 			</State>
