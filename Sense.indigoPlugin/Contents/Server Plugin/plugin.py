@@ -88,7 +88,7 @@ class Plugin(indigo.PluginBase):
 		self.debugLog(u"shutdown called")
 
 	def deviceStartComm(self, dev):
-		#self.debugLog("deviceStartComm called")
+		self.debugLog("deviceStartComm called")
 		dev.stateListOrDisplayStateIdChanged()
 		#self.debugLog(dev)
 		if (dev.deviceTypeId == "sensedevice"):
@@ -98,10 +98,10 @@ class Plugin(indigo.PluginBase):
 			self.devIDs.append(sID)
 			self.sidFromDev[int(devID)] = sID
 			self.devFromSid[sID] = devID
-			self.debugLog("Added device {} ({})".format(sID,dName))
+			#self.debugLog("Added device {} ({})".format(sID,dName))
 			
 	def deviceStopComm(self, dev):
-		#self.debugLog("deviceStopComm called")
+		self.debugLog("deviceStopComm called")
 		if (dev.deviceTypeId == "sensedevice"):
 			devID = dev.id
 			sID = dev.states['id']
@@ -115,6 +115,7 @@ class Plugin(indigo.PluginBase):
 			#self.debugLog("Removed device {} ({})".format(sID,dName))
 			
 	def getDevices(self):
+		self.debugLog("IDs: %s" % self.devIDs)
 		#self.debugLog(u"Getting realtime()")
 		try:
 			self.sense.update_realtime()
@@ -152,6 +153,13 @@ class Plugin(indigo.PluginBase):
 			if ('tags' in d) and ('Revoked' in d['tags']):
 				if (d['tags']['Revoked'] == 'true'):
 					dRevoked = True
+					
+			if ('tags' in d) and ('MergedDevices' in d['tags']):
+				mergedDevices = d['tags']['MergedDevices'].split(',')
+				for md in mergedDevices:
+					if (md in self.devIDs):
+						self.debugLog(u"Deleting merged device: %s" % indigo.devices[self.devFromSid[md]].name)
+						indigo.device.delete(self.devFromSid[md])
 
 			if (dRevoked):
 				if (sID in self.devIDs):
@@ -171,6 +179,7 @@ class Plugin(indigo.PluginBase):
 					#dev.stateListOrDisplayStateIdChanged()
 				else:
 					self.debugLog("CREATED: {}".format(dName))
+					self.debugLog(d)
 					try:
 						dev = indigo.device.create(indigo.kProtocol.Plugin,dName,dName,deviceTypeId="sensedevice",folder=int(self.folderID))
 						dev.updateStateOnServer(key='id', value=str(sID))
