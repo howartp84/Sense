@@ -3,13 +3,13 @@
 <plist version="1.0">
 <dict>
 	<key>PluginVersion</key>
-	<string>1.0.5</string>
+	<string>1.0.6</string>
 	<key>ServerApiVersion</key>
 	<string>2.0</string>
 	<key>IwsApiVersion</key>
 	<string>1.0.0</string>
 	<key>CFBundleDisplayName</key>
-	<string>Sense</string>
+	<string>Sense Home Energy</string>
 	<key>CFBundleIdentifier</key>
 	<string>com.howartp.sense</string>
 	<key>CFBundleVersion</key>

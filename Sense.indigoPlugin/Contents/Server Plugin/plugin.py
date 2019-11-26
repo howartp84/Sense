@@ -49,6 +49,17 @@ class Plugin(indigo.PluginBase):
 			csv_file = open(self.csvActive, 'w+')
 			csv_file.write("Timestamp,power\n")
 			csv_file.close()
+			
+	def validatePrefsConfigUi(self, valuesDict):
+		fid = int(valuesDict["folderID"])
+		if (fid in indigo.devices.folders):
+			return True
+		else:
+			errorDict = indigo.Dict()
+			errorDict["folderID"] = "This field should contain a folder ID"
+			errorDict["showAlertText"] = "Folder not found with ID: %s \n\nEnsure you have used the ID, not the name of the folder.\n\nRight-click the folder you want to use and use 'Copy ID' to obtain the correct ID." % fid
+			return (False, valuesDict, errorDict)
+
 
 	def closedPrefsConfigUi(self, valuesDict, userCancelled):
 		# Since the dialog closed we want to set the debug flag - if you don't directly use

@@ -22,5 +22,9 @@
 	<Field id="folderID" type="textfield">
 		<Label>Folder for Sense device creation:</Label>
 	</Field>
-
+	
+	<Field id="l_folderID" type="label">
+		<Label>This should be the ID of the folder, not the name.  Right-click it and "Copy ID".</Label>
+	</Field>
+	
 </PluginConfig>
