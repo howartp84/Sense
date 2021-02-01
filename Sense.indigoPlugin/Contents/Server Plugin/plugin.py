@@ -25,31 +25,31 @@ class Plugin(indigo.PluginBase):
 	def __init__(self, pluginId, pluginDisplayName, pluginVersion, pluginPrefs):
 		super(Plugin, self).__init__(pluginId, pluginDisplayName, pluginVersion, pluginPrefs)
 		self.debug = pluginPrefs.get("showDebugInfo", False)
-		
+
 		self.rateLimit = pluginPrefs.get("rateLimit", 30)
 		self.doSolar = bool(pluginPrefs.get("solarEnabled", False))
 		self.folderID = pluginPrefs.get("folderID", None)
 
 		self.devIDs = list()
-		
+
 		self.sidFromDev = dict()
 		self.devFromSid = dict()
 
 		self.rt  = dict()
-		
+
 		self.dontStart = True
-		
+
 		self.csvPath = "{}/Preferences/Plugins/{}".format(indigo.server.getInstallFolderPath(), self.pluginId)
-		
+
 		self.csvActive = "{}/Preferences/Plugins/{}/activeLog.csv".format(indigo.server.getInstallFolderPath(), self.pluginId)
 		self.csvDaily = "{}/Preferences/Plugins/{}/dailyLog.csv".format(indigo.server.getInstallFolderPath(), self.pluginId)
-		
+
 		if not os.path.exists(self.csvPath):
 			os.mkdir(self.csvPath)
 			csv_file = open(self.csvActive, 'w+')
 			csv_file.write("Timestamp,power\n")
 			csv_file.close()
-			
+
 	def validatePrefsConfigUi(self, valuesDict):
 		fid = int(valuesDict["folderID"])
 		if (fid in indigo.devices.folders):
@@ -75,7 +75,7 @@ class Plugin(indigo.PluginBase):
 			self.debugLog(self.sense.authenticate(str(valuesDict['username']), str(valuesDict['password']), self.rateLimit))
 			self.doSolar = bool(valuesDict.get("solarEnabled", False))
 			self.folderID = valuesDict.get("folderID", "")
-			
+
 			try:
 				dev = indigo.device.create(indigo.kProtocol.Plugin,"Active Total","Active Total",deviceTypeId="sensedevice",folder=int(self.folderID))
 				dev.updateStateOnServer(key='id', value='core')
@@ -83,7 +83,7 @@ class Plugin(indigo.PluginBase):
 				dev.stateListOrDisplayStateIdChanged()
 			except ValueError as e:
 				pass
-			
+
 
 	########################################
 	def startup(self):
@@ -94,12 +94,12 @@ class Plugin(indigo.PluginBase):
 		self.debugLog(self.sense.authenticate(str(self.pluginPrefs['username']), str(self.pluginPrefs['password']), self.rateLimit))
 		#for dev in indigo.devices.iter("self"):
 			#indigo.device.delete(dev)
-		
+
 	def shutdown(self):
 		self.debugLog(u"shutdown called")
 
 	def deviceStartComm(self, dev):
-		self.debugLog("deviceStartComm called")
+		#self.debugLog("deviceStartComm called")
 		dev.stateListOrDisplayStateIdChanged()
 		#self.debugLog(dev)
 		if (dev.deviceTypeId == "sensedevice"):
@@ -110,9 +110,9 @@ class Plugin(indigo.PluginBase):
 			self.sidFromDev[int(devID)] = sID
 			self.devFromSid[sID] = devID
 			#self.debugLog("Added device {} ({})".format(sID,dName))
-			
+
 	def deviceStopComm(self, dev):
-		self.debugLog("deviceStopComm called")
+		#self.debugLog("deviceStopComm called")
 		if (dev.deviceTypeId == "sensedevice"):
 			devID = dev.id
 			sID = dev.states['id']
@@ -124,7 +124,7 @@ class Plugin(indigo.PluginBase):
 			self.sidFromDev.pop(int(devID),None)
 			self.devFromSid.pop(sID,None)
 			#self.debugLog("Removed device {} ({})".format(sID,dName))
-			
+
 	def getDevices(self):
 		self.debugLog("IDs: %s" % self.devIDs)
 		#self.debugLog(u"Getting realtime()")
@@ -164,7 +164,10 @@ class Plugin(indigo.PluginBase):
 			if ('tags' in d) and ('Revoked' in d['tags']):
 				if (d['tags']['Revoked'] == 'true'):
 					dRevoked = True
-					
+			if ('tags' in d) and ('UserDeleted' in d['tags']):
+				if (d['tags']['UserDeleted'] == 'true'):
+					dRevoked = True
+
 			if ('tags' in d) and ('MergedDevices' in d['tags']):
 				mergedDevices = d['tags']['MergedDevices'].split(',')
 				for md in mergedDevices:
@@ -174,7 +177,8 @@ class Plugin(indigo.PluginBase):
 
 			if (dRevoked):
 				if (sID in self.devIDs):
-					indigo.device.delete(self.devFromSid[sID])
+					#indigo.device.delete(self.devFromSid[sID])
+					indigo.device.enable(self.devFromSid[sID], value=False)
 			else:
 				if (sID in self.devIDs):
 					dev = indigo.devices[self.devFromSid[sID]]
@@ -189,15 +193,18 @@ class Plugin(indigo.PluginBase):
 						dev.updateStateImageOnServer(indigo.kStateImageSel.PowerOff)
 					#dev.stateListOrDisplayStateIdChanged()
 				else:
-					self.debugLog("CREATED: {}".format(dName))
-					self.debugLog(d)
+					self.debugLog("CREATING: {} ({})".format(dName,sID))
+					#self.debugLog(d)
 					try:
 						dev = indigo.device.create(indigo.kProtocol.Plugin,dName,dName,deviceTypeId="sensedevice",folder=int(self.folderID))
 						dev.updateStateOnServer(key='id', value=str(sID))
 						dev.updateStateOnServer(key='power', value="0", uiValue="0 w")
 						dev.stateListOrDisplayStateIdChanged()
 					except ValueError as e:
-						self.errorLog(e)
+						if (str(e) == "NameNotUniqueError"):
+							self.debugLog("Duplicate device found - please ensure Sense devices are all uniquely named")
+						else:
+							self.errorLog(e)
 					#dev.stateListOrDisplayStateIdChanged()
 		self.rt = None
 		self.rt = dict()
@@ -206,11 +213,11 @@ class Plugin(indigo.PluginBase):
 	def runConcurrentThread(self):
 		try:
 			while True:
-				
+
 				if (self.dontStart):
 					self.sleep(10) #Wait for initialisation to finish
 					self.dontStart = False
-				
+
 				self.getDevices()
 				#self.debugLog(self.sense.getRealtimeCall())
 				self.sleep(int(self.rateLimit))
