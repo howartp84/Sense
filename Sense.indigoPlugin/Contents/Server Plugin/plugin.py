@@ -182,9 +182,17 @@ class Plugin(indigo.PluginBase):
 			else:
 				if (sID in self.devIDs):
 					dev = indigo.devices[self.devFromSid[sID]]
+					devOldName = dev.name
 					if (dev.name != dName):
 						dev.name = dName
-						dev.replaceOnServer()
+						try:
+							dev.replaceOnServer()
+						except ValueError as e:
+							if (str(e) == "NameNotUniqueError"):
+								self.debugLog("Trying to rename %s to %s" % (devOldName,dName))
+								self.debugLog("Failed to rename - duplicate device found - please ensure Sense devices are all uniquely named")
+							else:
+								self.errorLog(e)
 					if (str(sID) in self.rt.keys()):
 						dev.updateStateOnServer(key='power', value=str(self.rt[sID]), uiValue=str("{} w".format(self.rt[sID])))
 						dev.updateStateImageOnServer(indigo.kStateImageSel.PowerOn)
