@@ -35,7 +35,7 @@ class Plugin(indigo.PluginBase):
 		self.sidFromDev = dict()
 		self.devFromSid = dict()
 
-		self.rt  = dict()
+		self.rt  = dict() #RealTime
 
 		self.dontStart = True
 
@@ -76,14 +76,29 @@ class Plugin(indigo.PluginBase):
 			self.doSolar = bool(valuesDict.get("solarEnabled", False))
 			self.folderID = valuesDict.get("folderID", "")
 
-			try:
-				dev = indigo.device.create(indigo.kProtocol.Plugin,"Active Total","Active Total",deviceTypeId="sensedevice",folder=int(self.folderID))
-				dev.updateStateOnServer(key='id', value='core')
-				dev.updateStateOnServer(key='power', value="0", uiValue="0 w")
-				dev.stateListOrDisplayStateIdChanged()
-			except ValueError as e:
-				pass
+			self.createCore()
 
+			if (self.dontStart == False):
+				self.getDevices()
+
+	def createCore(self):
+		try:
+			self.debugLog("CreateCore")
+			dev = indigo.device.create(indigo.kProtocol.Plugin,"Active Total","Active Total",deviceTypeId="sensedevice",folder=int(self.folderID))
+			dev.updateStateOnServer(key='id', value='core')
+			dev.updateStateOnServer(key='power', value="0", uiValue="0 w")
+			dev.updateStateImageOnServer(indigo.kStateImageSel.PowerOff)
+			dev.stateListOrDisplayStateIdChanged()
+
+			#Add it to self.devIDs
+			devID = dev.id
+			sID = "core"
+			self.devIDs.append(sID)
+			self.sidFromDev[int(devID)] = sID
+			self.devFromSid[sID] = devID
+		except ValueError as e:
+			self.errorLog("Could not create Core device.")
+			pass
 
 	########################################
 	def startup(self):
@@ -104,12 +119,15 @@ class Plugin(indigo.PluginBase):
 		#self.debugLog(dev)
 		if (dev.deviceTypeId == "sensedevice"):
 			devID = dev.id
-			sID = dev.states['id']
 			dName = dev.name
-			self.devIDs.append(sID)
-			self.sidFromDev[int(devID)] = sID
-			self.devFromSid[sID] = devID
-			#self.debugLog("Added device {} ({})".format(sID,dName))
+			sID = dev.states['id']
+			if (sID != ""): #The state doesn't exist when the device is first created, so can't populate self.devIDs at this point
+				self.devIDs.append(sID)
+				self.sidFromDev[int(devID)] = sID
+				self.devFromSid[sID] = devID
+			#self.debugLog("Added device {} ({})".format(sID,dName)
+			#self.debugLog(dev.states)
+			#self.debugLog(str(self.devIDs))
 
 	def deviceStopComm(self, dev):
 		#self.debugLog("deviceStopComm called")
@@ -126,22 +144,33 @@ class Plugin(indigo.PluginBase):
 			#self.debugLog("Removed device {} ({})".format(sID,dName))
 
 	def getDevices(self):
-		self.debugLog("IDs: %s" % self.devIDs)
-		#self.debugLog(u"Getting realtime()")
+		#self.debugLog("IDs: %s" % self.devIDs)
+		self.debugLog(u"Getting realtime()")
 		try:
+			#self.debugLog(u"132")
 			self.sense.update_realtime()
+			#self.debugLog(u"134")
 			for i in self.sense._realtime['devices']:
-				rtid = i['id']
-				self.rt[rtid] = int(i['w'])
+				#self.debugLog(i)
+				rtid = i['id'] #Get ID from RealTime devices
+				self.rt[rtid] = int(i['w']) #Get power from RealTime devices
+			#self.debugLog(u"138")
 		except SenseAPITimeoutException as e:
 			self.errorLog(e)
+			return
 		self.sense.update_trend_data()
 		active = self.sense.active_power
 		daily = self.sense.daily_usage
 		self.debugLog("Active: {}w".format(active))
 		self.debugLog("Daily: {}kw".format(daily))
-		indigo.devices[self.devFromSid['core']].updateStateOnServer(key='power', value=str(int(active)), uiValue=str("{} w".format(int(active))))
-		indigo.devices[self.devFromSid['core']].updateStateImageOnServer(indigo.kStateImageSel.PowerOn)
+		try:
+			indigo.devices[self.devFromSid['core']].updateStateOnServer(key='power', value=str(int(active)), uiValue=str("{} w".format(int(active))))
+			indigo.devices[self.devFromSid['core']].updateStateImageOnServer(indigo.kStateImageSel.PowerOn)
+		except KeyError as e:
+			self.debugLog("No Core device found - Attempting to recreate.")
+			self.debugLog("Global Active and Daily stats will update on next refresh.")
+			self.debugLog(e)
+			self.createCore()
 
 		lastUpdateTS = self.sense.getRealtimeCall()
 		lastUpdate = datetime.fromtimestamp(lastUpdateTS).strftime("%Y-%m-%d %H:%M:%S.%f")
@@ -181,8 +210,11 @@ class Plugin(indigo.PluginBase):
 					indigo.device.enable(self.devFromSid[sID], value=False)
 			else:
 				if (sID in self.devIDs):
+					#self.debugLog("sID {} is in self.devIDs".format(sID))
 					dev = indigo.devices[self.devFromSid[sID]]
 					devOldName = dev.name
+					#self.debugLog("sID {} has old name {}".format(sID,devOldName))
+					#self.debugLog("sID {} has new name {}".format(sID,dName))
 					if (dev.name != dName):
 						dev.name = dName
 						try:
@@ -193,7 +225,7 @@ class Plugin(indigo.PluginBase):
 								self.debugLog("Failed to rename - duplicate device found - please ensure Sense devices are all uniquely named")
 							else:
 								self.errorLog(e)
-					if (str(sID) in self.rt.keys()):
+					if (str(sID) in self.rt.keys()): #If the device is currently "On" (ie appearing in Realtime on Sense dashboard)
 						dev.updateStateOnServer(key='power', value=str(self.rt[sID]), uiValue=str("{} w".format(self.rt[sID])))
 						dev.updateStateImageOnServer(indigo.kStateImageSel.PowerOn)
 					else:
@@ -201,13 +233,21 @@ class Plugin(indigo.PluginBase):
 						dev.updateStateImageOnServer(indigo.kStateImageSel.PowerOff)
 					#dev.stateListOrDisplayStateIdChanged()
 				else:
+					#self.debugLog("sID {} is NOT in self.devIDs".format(sID))
 					self.debugLog("CREATING: {} ({})".format(dName,sID))
 					#self.debugLog(d)
 					try:
 						dev = indigo.device.create(indigo.kProtocol.Plugin,dName,dName,deviceTypeId="sensedevice",folder=int(self.folderID))
 						dev.updateStateOnServer(key='id', value=str(sID))
 						dev.updateStateOnServer(key='power', value="0", uiValue="0 w")
+						dev.updateStateImageOnServer(indigo.kStateImageSel.PowerOff)
 						dev.stateListOrDisplayStateIdChanged()
+
+						#Add it to self.devIDs
+						devID = dev.id
+						self.devIDs.append(sID)
+						self.sidFromDev[int(devID)] = sID
+						self.devFromSid[sID] = devID
 					except ValueError as e:
 						if (str(e) == "NameNotUniqueError"):
 							self.debugLog("Duplicate device found - please ensure Sense devices are all uniquely named")
