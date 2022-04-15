@@ -7,7 +7,7 @@ from .sense_api import *
 from .sense_exceptions import *
 
 class ASyncSenseable(SenseableBase):
-    
+
     async def authenticate(self, username, password):
         auth_data = {
             "email": username,
@@ -23,14 +23,13 @@ class ASyncSenseable(SenseableBase):
                     # check for 200 return
                     if resp.status != 200:
                         raise SenseAuthenticationException(
-                            "Please check username and password. API Return Code: %s" %
-                            resp.status)
+                            "Please check username and password. API Return Code: {}".format(resp.status))
 
                     # Build out some common variables
                     self.set_auth_data(await resp.json())
         except Exception as e:
-            raise Exception('Connection failure: %s' % e)
-                
+            raise Exception('Connection failure: {}'.format(e))
+
     # Update the realtime data for asyncio
     async def update_realtime(self):
         # rate limit API calls
@@ -39,10 +38,10 @@ class ASyncSenseable(SenseableBase):
             return self._realtime
         self.last_realtime_call = time()
         await self.async_realtime_stream(single=True)
-    
+
     async def async_realtime_stream(self, callback=None, single=False):
         """ Reads realtime data from websocket"""
-        url = WS_URL % (self.sense_monitor_id, self.sense_access_token)
+        url = WS_URL.format(self.sense_monitor_id, self.sense_access_token)
         # hello, features, [updates,] data
         async with websockets.connect(url) as ws:
             while True:
@@ -51,7 +50,7 @@ class ASyncSenseable(SenseableBase):
                         ws.recv(), timeout=self.wss_timeout)
                 except asyncio.TimeoutError:
                     raise SenseAPITimeoutException("API websocket timed out")
-                
+
                 result = json.loads(message)
                 if result.get('type') == 'realtime_update':
                     data = result['payload']
@@ -61,11 +60,11 @@ class ASyncSenseable(SenseableBase):
                 elif result.get('type') == 'error':
                     data = result['payload']
                     raise SenseWebsocketException(data['error_reason'])
-            
+
     async def get_realtime_future(self, callback):
         """ Returns an async Future to parse realtime data with callback"""
         await self.async_realtime_stream(callback)
-        
+
     async def api_call(self, url, payload={}):
         timeout = aiohttp.ClientTimeout(total=self.api_timeout)
         async with aiohttp.ClientSession() as session:
@@ -75,15 +74,14 @@ class ASyncSenseable(SenseableBase):
                           data=payload) as resp:
                 return await resp.json()
         # timed out
-        raise SenseAPITimeoutException("API call timed out") 
+        raise SenseAPITimeoutException("API call timed out")
 
     async def get_trend_data(self, scale):
         if scale.upper() not in valid_scales:
-            raise Exception("%s not a valid scale" % scale)
+            raise Exception("{} not a valid scale".format(scale))
         t = datetime.now().replace(hour=12)
         json = self.api_call(
-            'app/history/trends?monitor_id=%s&scale=%s&start=%s' %
-            (self.sense_monitor_id, scale, t.isoformat()))
+            'app/history/trends?monitor_id={}&scale={}&start={}'.format(self.sense_monitor_id, scale, t.isoformat()))
         self._trend_data[scale] = await json
 
     async def update_trend_data(self):
@@ -92,13 +90,11 @@ class ASyncSenseable(SenseableBase):
 
     async def get_discovered_device_names(self):
         # lots more info in here to be parsed out
-        json = self.api_call('app/monitors/%s/devices' %
-                                 self.sense_monitor_id)
+        json = self.api_call('app/monitors/{}/devices'.format(self.sense_monitor_id))
         self._devices = await [entry['name'] for entry in json]
         return self._devices
 
     async def get_discovered_device_data(self):
-        json = self.api_call('monitors/%s/devices' %
-                             self.sense_monitor_id)
+        json = self.api_call('monitors/{}/devices'.format(self.sense_monitor_id))
         return await json
 

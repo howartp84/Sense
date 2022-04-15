@@ -6,7 +6,7 @@ from datetime import datetime
 from .sense_exceptions import *
 
 API_URL = 'https://api.sense.com/apiservice/api/v1/'
-WS_URL = "wss://clientrt.sense.com/monitors/%s/realtimefeed?access_token=%s"
+WS_URL = "wss://clientrt.sense.com/monitors/{}/realtimefeed?access_token={}"
 API_TIMEOUT = 5
 WSS_TIMEOUT = 5
 RATE_LIMIT = 30
@@ -23,10 +23,10 @@ class SenseableBase(object):
         # Timeout instance variables
         self.api_timeout = api_timeout
         self.wss_timeout = wss_timeout
-        
+
         self._realtime = {}
         self._devices = []
-        self._trend_data = {}        
+        self._trend_data = {}
         for scale in valid_scales: self._trend_data[scale] = {}
 
         if username and password:
@@ -40,19 +40,19 @@ class SenseableBase(object):
         # create the auth header
         self.headers = {'Authorization': 'bearer {}'.format(
             self.sense_access_token)}
-        
+
 
     @property
     def devices(self):
         """Return devices."""
         return self._devices
-    
+
     def set_realtime(self, data):
         self._realtime = data
         self.last_realtime_call = time()
-        
+
     def get_realtime(self):
-        return self._realtime     
+        return self._realtime
 
     @property
     def active_power(self):
@@ -65,11 +65,11 @@ class SenseableBase(object):
     @property
     def active_voltage(self):
         return self._realtime.get('voltage', 0)
-    
+
     @property
     def active_frequency(self):
         return self._realtime.get('hz', 0)
-    
+
     @property
     def daily_usage(self):
         return self.get_trend('DAY', False)
@@ -77,7 +77,7 @@ class SenseableBase(object):
     @property
     def daily_production(self):
         return self.get_trend('DAY', True)
-    
+
     @property
     def weekly_usage(self):
         # Add today's usage
@@ -87,7 +87,7 @@ class SenseableBase(object):
     def weekly_production(self):
         # Add today's production
         return self.get_trend('WEEK', True)
-    
+
     @property
     def monthly_usage(self):
         # Add today's usage
@@ -97,7 +97,7 @@ class SenseableBase(object):
     def monthly_production(self):
         # Add today's production
         return self.get_trend('MONTH', True)
-    
+
     @property
     def yearly_usage(self):
         # Add this month's usage

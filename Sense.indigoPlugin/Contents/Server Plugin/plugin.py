@@ -25,6 +25,7 @@ class Plugin(indigo.PluginBase):
 	def __init__(self, pluginId, pluginDisplayName, pluginVersion, pluginPrefs):
 		super(Plugin, self).__init__(pluginId, pluginDisplayName, pluginVersion, pluginPrefs)
 		self.debug = pluginPrefs.get("showDebugInfo", False)
+		self.version = pluginVersion
 
 		self.rateLimit = pluginPrefs.get("rateLimit", 30)
 		self.doSolar = bool(pluginPrefs.get("solarEnabled", False))
@@ -57,7 +58,7 @@ class Plugin(indigo.PluginBase):
 		else:
 			errorDict = indigo.Dict()
 			errorDict["folderID"] = "This field should contain a folder ID"
-			errorDict["showAlertText"] = "Folder not found with ID: %s \n\nEnsure you have used the ID, not the name of the folder.\n\nRight-click the folder you want to use and use 'Copy ID' to obtain the correct ID." % fid
+			errorDict["showAlertText"] = "Folder not found with ID: {} \n\nEnsure you have used the ID, not the name of the folder.\n\nRight-click the folder you want to use and use 'Copy ID' to obtain the correct ID.".format(fid)
 			return (False, valuesDict, errorDict)
 
 
@@ -85,8 +86,13 @@ class Plugin(indigo.PluginBase):
 		try:
 			self.debugLog("CreateCore")
 			dev = indigo.device.create(indigo.kProtocol.Plugin,"Active Total","Active Total",deviceTypeId="sensedevice",folder=int(self.folderID))
-			dev.updateStateOnServer(key='id', value='core')
-			dev.updateStateOnServer(key='power', value="0", uiValue="0 w")
+			newStateList = [
+				{'key':'id', 'value':'core'},
+				{'key':'power', 'value':'0', 'uiValue':'0 w'}
+				]
+			dev.updateStatesOnServer(newStateList)
+			#dev.updateStateOnServer(key='id', value='core')
+			#dev.updateStateOnServer(key='power', value="0", uiValue="0 w")
 			dev.updateStateImageOnServer(indigo.kStateImageSel.PowerOff)
 			dev.stateListOrDisplayStateIdChanged()
 
@@ -103,6 +109,7 @@ class Plugin(indigo.PluginBase):
 	########################################
 	def startup(self):
 		self.debugLog(u"startup called")
+		self.debugLog("Plugin version: {}".format(self.version))
 		#self.debugLog(u"Creating senseable")
 		self.sense = sense_energy.Senseable()
 		self.debugLog(u"Authenticating...")
@@ -144,7 +151,7 @@ class Plugin(indigo.PluginBase):
 			#self.debugLog("Removed device {} ({})".format(sID,dName))
 
 	def getDevices(self):
-		#self.debugLog("IDs: %s" % self.devIDs)
+		#self.debugLog("IDs: {}".format(self.devIDs))
 		self.debugLog(u"Getting realtime()")
 		try:
 			#self.debugLog(u"132")
@@ -201,7 +208,7 @@ class Plugin(indigo.PluginBase):
 				mergedDevices = d['tags']['MergedDevices'].split(',')
 				for md in mergedDevices:
 					if (md in self.devIDs):
-						self.debugLog(u"Deleting merged device: %s" % indigo.devices[self.devFromSid[md]].name)
+						self.debugLog(u"Deleting merged device: {}".format(indigo.devices[self.devFromSid[md]].name))
 						indigo.device.delete(self.devFromSid[md])
 
 			if (dRevoked):
@@ -221,7 +228,7 @@ class Plugin(indigo.PluginBase):
 							dev.replaceOnServer()
 						except ValueError as e:
 							if (str(e) == "NameNotUniqueError"):
-								self.debugLog("Trying to rename %s to %s" % (devOldName,dName))
+								self.debugLog("Trying to rename {} to {}".format(devOldName,dName))
 								self.debugLog("Failed to rename - duplicate device found - please ensure Sense devices are all uniquely named")
 							else:
 								self.errorLog(e)
@@ -238,8 +245,13 @@ class Plugin(indigo.PluginBase):
 					#self.debugLog(d)
 					try:
 						dev = indigo.device.create(indigo.kProtocol.Plugin,dName,dName,deviceTypeId="sensedevice",folder=int(self.folderID))
-						dev.updateStateOnServer(key='id', value=str(sID))
-						dev.updateStateOnServer(key='power', value="0", uiValue="0 w")
+						newStateList = [
+							{'key':'id', 'value':str(sID)},
+							{'key':'power', 'value':'0', 'uiValue':'0 w'}
+							]
+						dev.updateStatesOnServer(newStateList)
+						#dev.updateStateOnServer(key='id', value=str(sID))
+						#dev.updateStateOnServer(key='power', value="0", uiValue="0 w")
 						dev.updateStateImageOnServer(indigo.kStateImageSel.PowerOff)
 						dev.stateListOrDisplayStateIdChanged()
 
